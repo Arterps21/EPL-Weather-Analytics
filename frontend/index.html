@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Аналитика матчей Английской Премьер-лиги и погоды">
+  <title>EPL Weather Analytics</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#">EPL<span>WX</span></a>
+    <div id="service-status" class="service-status"><i></i> Проверяем Analytics…</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Premier League · Weather intelligence</div>
+      <h1>Как погода меняет<br><em>характер матча?</em></h1>
+      <p>Сравниваем результативность клубов АПЛ в дождливую и сухую погоду на основе исторических данных.</p>
+    </section>
+
+    <section class="query-panel" aria-labelledby="query-title">
+      <div>
+        <span class="step">01</span>
+        <h2 id="query-title">Выберите выборку</h2>
+      </div>
+
+      <form id="analytics-form">
+        <label>
+          Команда
+          <input id="team" name="team" list="teams" value="Manchester City" required minlength="2" maxlength="100">
+          <datalist id="teams">
+            <option value="Arsenal"></option>
+            <option value="Chelsea"></option>
+            <option value="Liverpool"></option>
+            <option value="Manchester City"></option>
+            <option value="Manchester United"></option>
+            <option value="Tottenham Hotspur"></option>
+          </datalist>
+        </label>
+
+        <label>
+          Сезон
+          <select id="season" name="season">
+            <option>2025/26</option>
+            <option>2024/25</option>
+            <option>2023/24</option>
+            <option>2022/23</option>
+            <option>2021/22</option>
+            <option>2020/21</option>
+            <option>2019/20</option>
+            <option>2018/19</option>
+            <option>2017/18</option>
+            <option>2016/17</option>
+            <option>2015/16</option>
+          </select>
+        </label>
+
+        <button type="submit">
+          Провести анализ
+          <span aria-hidden="true">↗</span>
+        </button>
+      </form>
+      <p id="message" class="message" role="status"></p>
+    </section>
+
+    <section id="results" class="results" hidden aria-live="polite">
+      <div class="results-heading">
+        <div>
+          <span class="step">02</span>
+          <h2>Результаты</h2>
+        </div>
+        <div id="result-meta" class="result-meta"></div>
+      </div>
+
+      <div class="comparison">
+        <article class="weather-card rain">
+          <div class="card-icon">☂</div>
+          <div>
+            <span class="card-label">Дождливая погода</span>
+            <strong id="rain-matches">—</strong><small> матчей</small>
+          </div>
+          <dl>
+            <div><dt>Голы / матч</dt><dd id="rain-goals">—</dd></div>
+            <div><dt>xG / матч</dt><dd id="rain-xg">—</dd></div>
+          </dl>
+        </article>
+
+        <div class="versus">VS</div>
+
+        <article class="weather-card dry">
+          <div class="card-icon">☀</div>
+          <div>
+            <span class="card-label">Сухая погода</span>
+            <strong id="dry-matches">—</strong><small> матчей</small>
+          </div>
+          <dl>
+            <div><dt>Голы / матч</dt><dd id="dry-goals">—</dd></div>
+            <div><dt>xG / матч</dt><dd id="dry-xg">—</dd></div>
+          </dl>
+        </article>
+      </div>
+
+      <p class="disclaimer">Это описательная статистика, а не доказательство причинного влияния погоды на результат.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>EPL Weather Analytics</span>
+    <span>FastAPI · PostgreSQL · Redis · RabbitMQ</span>
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

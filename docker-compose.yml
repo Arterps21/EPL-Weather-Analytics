@@ -1,0 +1,181 @@
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:3000:80"
+    networks:
+      - edge
+    depends_on:
+      analytics-service:
+        condition: service_started
+
+  match-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - match_db_data:/var/lib/postgresql/data
+      - ./services/match_service/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - match_data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  match-service:
+    build: ./services/match_service
+    environment:
+      DB_HOST: match-db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - match_api
+      - match_data
+    depends_on:
+      match-db:
+        condition: service_healthy
+
+  weather-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${WEATHER_POSTGRES_DB}
+      POSTGRES_USER: ${WEATHER_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${WEATHER_POSTGRES_PASSWORD}
+    volumes:
+      - weather_db_data:/var/lib/postgresql/data
+      - ./services/weather_service/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - weather_data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  weather-service:
+    build: ./services/weather_service
+    environment:
+      DB_HOST: weather-db
+      DB_PORT: 5432
+      DB_NAME: ${WEATHER_POSTGRES_DB}
+      DB_USER: ${WEATHER_POSTGRES_USER}
+      DB_PASSWORD: ${WEATHER_POSTGRES_PASSWORD}
+    networks:
+      - weather_api
+      - weather_data
+    depends_on:
+      weather-db:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - cache
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - broker
+      - admin
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  analytics-service:
+    build: ./services/analytics_service
+    ports:
+      - "127.0.0.1:8003:8003"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    networks:
+      - edge
+      - cache
+      - broker
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  analytics-worker:
+    build: ./services/analytics_service
+    command: ["python", "-m", "app.worker"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    networks:
+      - match_api
+      - weather_api
+      - broker
+      - cache
+    depends_on:
+      match-service:
+        condition: service_started
+      weather-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+networks:
+  edge:
+    driver: bridge
+
+  match_api:
+    driver: bridge
+    internal: true
+
+  weather_api:
+    driver: bridge
+    internal: true
+
+  match_data:
+    driver: bridge
+    internal: true
+
+  weather_data:
+    driver: bridge
+    internal: true
+
+  cache:
+    driver: bridge
+    internal: true
+
+  broker:
+    driver: bridge
+    internal: true
+
+  admin:
+    driver: bridge
+
+volumes:
+  match_db_data:
+  weather_db_data:
+  rabbitmq_data:
